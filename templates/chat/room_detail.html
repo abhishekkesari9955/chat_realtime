@@ -1,0 +1,449 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ room.name }} | ConnectSafe</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 24px 16px;
+            background: #0b1120;
+            color: #e2e8f0;
+            font-family: Arial, sans-serif;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: auto;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        a {
+            color: #5eead4;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .panel {
+            background: #172033;
+            border: 1px solid #29364d;
+            padding: 22px;
+            border-radius: 16px;
+            margin-bottom: 18px;
+        }
+
+        .room-description {
+            color: #a5b4cc;
+            margin-bottom: 0;
+        }
+
+        .status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: #fbbf24;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: currentColor;
+            border-radius: 50%;
+        }
+
+        .chat-messages {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            min-height: 200px;
+            max-height: 480px;
+            overflow-y: auto;
+            padding: 8px 4px;
+            scroll-behavior: smooth;
+        }
+
+        .message-row {
+            display: flex;
+            justify-content: flex-start;
+        }
+
+        .message-row.own {
+            justify-content: flex-end;
+        }
+
+        .message {
+            max-width: min(75%, 560px);
+            padding: 12px 15px;
+            border: 1px solid #35445c;
+            background: #263449;
+            border-radius: 14px 14px 14px 4px;
+            overflow-wrap: anywhere;
+        }
+
+        .message-row.own .message {
+            background: #115e59;
+            border-color: #0f766e;
+            border-radius: 14px 14px 4px 14px;
+        }
+
+        .meta {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            gap: 8px;
+            color: #b9c7db;
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+
+        .message-content {
+            white-space: pre-wrap;
+            line-height: 1.5;
+        }
+
+        .empty-state {
+            color: #94a3b8;
+            text-align: center;
+            padding: 45px 12px;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 14px;
+            border: 1px solid #3b4a61;
+            border-radius: 12px;
+            background: #0b1120;
+            color: #f8fafc;
+            font: inherit;
+            resize: vertical;
+        }
+
+        textarea:focus {
+            outline: 2px solid #2dd4bf;
+            outline-offset: 2px;
+            border-color: #2dd4bf;
+        }
+
+        .composer-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+
+        .hint {
+            color: #94a3b8;
+            font-size: 12px;
+        }
+
+        button {
+            padding: 12px 20px;
+            border: 0;
+            border-radius: 10px;
+            background: #2dd4bf;
+            color: #042f2e;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button:hover:not(:disabled) {
+            background: #5eead4;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 14px 10px;
+            }
+
+            .panel {
+                padding: 16px;
+            }
+
+            .message {
+                max-width: 90%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <main class="container">
+        <header class="topbar">
+            <a href="{% url 'home' %}">← Back to dashboard</a>
+            <span id="connection-status" class="status" role="status"
+                  aria-live="polite">
+                <span class="status-dot"></span>
+                Connecting...
+            </span>
+        </header>
+
+        <section class="panel">
+            <h1>{{ room.name }}</h1>
+            <p class="room-description">
+                {{ room.description|default:"No description provided." }}
+            </p>
+            {% if room.created_by_id == request.user.id %}
+    <p>
+        <a href="{% url 'add_room_member' room.id %}">
+            + Add member
+        </a>
+    </p>
+{% endif %}
+        </section>
+
+        <section class="panel">
+            <h2>Conversation</h2>
+
+            <div id="messages-container" class="chat-messages"
+                 aria-live="polite" aria-relevant="additions">
+                {% for message in chat_messages %}
+                    <div class="message-row {% if message.sender_id == request.user.id %}own{% endif %}">
+                        <article class="message">
+                            <div class="meta">
+                                <span>{{ message.sender.display_name|default:message.sender.username }}</span>
+                                <time>{{ message.created_at|date:"d M Y, H:i" }}</time>
+                            </div>
+                            <div class="message-content">{{ message.content }}</div>
+                        </article>
+                    </div>
+                {% empty %}
+                    <p id="empty-message" class="empty-state">
+                        No messages yet. Start the conversation!
+                    </p>
+                {% endfor %}
+            </div>
+            <p id="typing-indicator"
+   role="status"
+   aria-live="polite"
+   style="color: #94a3b8; font-size: 13px; min-height: 18px;">
+</p>
+        </section>
+
+        <section class="panel">
+            <h2>Send a message</h2>
+
+            <form id="message-form">
+                {% csrf_token %}
+
+                <label for="message-content">Your message</label>
+                <textarea
+                    id="message-content"
+                    name="content"
+                    maxlength="5000"
+                    placeholder="Write a message..."
+                    required
+                ></textarea>
+
+                <div class="composer-footer">
+                    <span class="hint">Maximum 5000 characters</span>
+                    <button id="send-button" type="submit" disabled>
+                        Connecting...
+                    </button>
+                </div>
+            </form>
+        </section>
+    </main>
+
+    <script>
+    (() => {
+        "use strict";
+
+        const roomId = {{ room.id }};
+        const currentUserId = {{ request.user.id }};
+        const messagesContainer =
+            document.getElementById("messages-container");
+        const messageForm = document.getElementById("message-form");
+        const messageInput = document.getElementById("message-content");
+        const sendButton = document.getElementById("send-button");
+        const statusElement = document.getElementById("connection-status");
+        const typingIndicator =document.getElementById("typing-indicator");
+        const emptyMessage = document.getElementById("empty-message");
+
+        const protocol =
+            window.location.protocol === "https:" ? "wss:" : "ws:";
+        const socketUrl =
+            `${protocol}//${window.location.host}/ws/chat/rooms/${roomId}/`;
+
+        let socket;
+
+        function updateStatus(text, color) {
+            statusElement.lastChild.textContent = ` ${text}`;
+            statusElement.style.color = color;
+        }
+
+        function scrollToLatestMessage() {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function appendMessage(message) {
+            if (!message || typeof message.content !== "string") {
+                return;
+            }
+
+            if (emptyMessage && emptyMessage.isConnected) {
+                emptyMessage.remove();
+            }
+
+            const row = document.createElement("div");
+            row.className = "message-row";
+
+            if (message.sender_id === currentUserId) {
+                row.classList.add("own");
+            }
+
+            const article = document.createElement("article");
+            article.className = "message";
+
+            const meta = document.createElement("div");
+            meta.className = "meta";
+
+            const sender = document.createElement("span");
+            sender.textContent = message.sender || "User";
+
+            const timestamp = document.createElement("time");
+            timestamp.textContent = message.created_at || "";
+
+            const content = document.createElement("div");
+            content.className = "message-content";
+            content.textContent = message.content;
+
+            meta.append(sender, timestamp);
+            article.append(meta, content);
+            row.appendChild(article);
+            messagesContainer.appendChild(row);
+
+            scrollToLatestMessage();
+        }
+
+        function connectSocket() {
+            socket = new WebSocket(socketUrl);
+
+            socket.addEventListener("open", () => {
+                updateStatus("Connected", "#5eead4");
+                sendButton.disabled = false;
+                sendButton.textContent = "Send message";
+            });
+
+            socket.addEventListener("message", (event) => {
+                let data;
+
+                try {
+                    data = JSON.parse(event.data);
+                } catch {
+                    return;
+                }
+                if (data.type === "typing_status") {
+                    if (data.sender_id === currentUserId) {
+                        return;
+                    }
+
+                    if (data.is_typing) {
+                        typingIndicator.textContent =
+                            `${data.sender} is typing...`;
+                    } else {
+                        typingIndicator.textContent = "";
+                    }
+
+                    return;
+                }
+                if (data.type !== "chat_message" || !data.message) {
+                    return;
+                }
+
+                appendMessage(data.message);
+            });
+
+            socket.addEventListener("close", () => {
+                updateStatus("Disconnected — refresh to reconnect", "#f87171");
+                sendButton.disabled = true;
+                sendButton.textContent = "Disconnected";
+            });
+
+            socket.addEventListener("error", () => {
+                updateStatus("Connection error", "#f87171");
+            });
+        }
+
+
+        let typingTimeout;
+
+            messageInput.addEventListener("input", () => {
+                if (!socket || socket.readyState !== WebSocket.OPEN) {
+                    return;
+                }
+
+                socket.send(JSON.stringify({
+                    type: "typing",
+                    is_typing: messageInput.value.trim().length > 0
+                }));
+
+                clearTimeout(typingTimeout);
+
+                typingTimeout = setTimeout(() => {
+                    if (socket && socket.readyState === WebSocket.OPEN) {
+                        socket.send(JSON.stringify({
+                            type: "typing",
+                            is_typing: false
+                        }));
+                    }
+                }, 1200);
+            });
+        messageForm.addEventListener("submit", (event) => {
+            event.preventDefault();
+
+            const content = messageInput.value.trim();
+
+            if (!content || !socket ||
+                socket.readyState !== WebSocket.OPEN) {
+                return;
+            }
+
+            if (content.length > 5000) {
+                updateStatus("Message is too long", "#f87171");
+                return;
+            }
+
+            socket.send(JSON.stringify({ content }));
+            clearTimeout(typingTimeout);
+
+            socket.send(JSON.stringify({
+                type: "typing",
+                is_typing: false
+            }));
+            messageInput.value = "";
+            messageInput.focus();
+        });
+
+        scrollToLatestMessage();
+        connectSocket();
+    })();
+    </script>
+</body>
+</html>

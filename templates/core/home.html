@@ -1,0 +1,145 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ConnectSafe | Home</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            padding: 30px 20px;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #101828, #164e63);
+            color: white;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .header, .room {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .header {
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        h1 {
+            color: #5eead4;
+        }
+
+        .muted {
+            color: #cbd5e1;
+        }
+
+        .button {
+            display: inline-block;
+            padding: 11px 16px;
+            border: 0;
+            border-radius: 8px;
+            background: #0f766e;
+            color: white;
+            font-weight: bold;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .button:hover {
+            background: #115e59;
+        }
+
+        .logout {
+            background: #334155;
+        }
+
+        .panel {
+            padding: 24px;
+            border: 1px solid #ffffff30;
+            border-radius: 16px;
+            background: #ffffff10;
+        }
+
+        .room {
+            padding: 16px 0;
+            border-bottom: 1px solid #ffffff25;
+        }
+
+        .room:last-child {
+            border-bottom: none;
+        }
+
+        .room h3 {
+            margin: 0 0 6px;
+        }
+
+        @media (max-width: 520px) {
+            .room {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <header class="header">
+            <div>
+                <h1>ConnectSafe</h1>
+                <p class="muted">
+                    Welcome, {{ user.display_name|default:user.username }}
+                </p>
+            </div>
+
+            <div>
+                <a class="button" href="{% url 'create_room' %}">
+                    + Create Room
+                </a>
+
+                <form method="post"
+                      action="{% url 'logout' %}"
+                      style="display:inline">
+                    {% csrf_token %}
+                    <button class="button logout" type="submit">
+                        Logout
+                    </button>
+                </form>
+            </div>
+        </header>
+
+        <section class="panel">
+            <h2>Your Chat Rooms</h2>
+
+            {% for room in rooms %}
+                <article class="room">
+                    <div>
+                        <h3>{{ room.name }}</h3>
+                        <p class="muted">
+                            {{ room.description|default:"No description" }}
+                        </p>
+                        <small class="muted">
+                            Created by {{ room.created_by.username }}
+                        </small>
+                    </div>
+                </article>
+            {% empty %}
+                <p class="muted">
+                    You haven't joined any chat rooms yet.
+                    Create your first room to get started!
+                </p>
+            {% endfor %}
+        </section>
+    </main>
+</body>
+</html>
